@@ -1,0 +1,177 @@
+{
+  "label": "unlocked-rebar-on-fp32acc-run2",
+  "started": "2026-10-27T19:50:39-04:00",
+  "torch": "2.11.0+cu128",
+  "cuda": "12.8",
+  "gpu_before": {
+    "name": "NVIDIA GeForce RTX 3090",
+    "pci.bus_id": "00000000:2D:00.0",
+    "driver_version": "621.01",
+    "vbios_version": "94.02.59.00.5e",
+    "power.limit": "370.00",
+    "clocks.max.sm": "2115",
+    "clocks.max.mem": "9751",
+    "temperature.gpu": "29.81",
+    "utilization.gpu": "11"
+  },
+  "other_gpu_processes": [
+    "CrossDeviceResume.exe",
+    "LockApp.exe",
+    "SearchHost.exe",
+    "ShellHost.exe",
+    "StartMenuExperienceHost.exe",
+    "TabTip.exe",
+    "TextInputHost.exe",
+    "claude.exe",
+    "dwm.exe",
+    "explorer.exe",
+    "ffmpeg.exe",
+    "msedgewebview2.exe"
+  ],
+  "reduced_precision_reduction": {
+    "fp16": false,
+    "bf16": false
+  },
+  "method": "median of 5 runs of 100 matmuls",
+  "results": {
+    "4096/fp32": {
+      "median_tflops": 22.93,
+      "runs_tflops": [
+        23.04,
+        22.93,
+        22.95,
+        22.92,
+        22.88
+      ],
+      "after": {
+        "clocks.sm": "1650",
+        "power.draw": "353.17",
+        "temperature.gpu": "40.91",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "4096/tf32": {
+      "median_tflops": 56.19,
+      "runs_tflops": [
+        57.01,
+        56.19,
+        56.58,
+        55.53,
+        55.83
+      ],
+      "after": {
+        "clocks.sm": "1650",
+        "power.draw": "352.27",
+        "temperature.gpu": "40.56",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "4096/fp16": {
+      "median_tflops": 112.35,
+      "runs_tflops": [
+        115.53,
+        112.35,
+        111.24,
+        112.24,
+        113.47
+      ],
+      "after": {
+        "clocks.sm": "1665",
+        "power.draw": "332.16",
+        "temperature.gpu": "40.62",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "4096/bf16": {
+      "median_tflops": 114.92,
+      "runs_tflops": [
+        117.12,
+        115.28,
+        113.75,
+        114.88,
+        114.92
+      ],
+      "after": {
+        "clocks.sm": "1695",
+        "power.draw": "330.89",
+        "temperature.gpu": "40.59",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "8192/fp32": {
+      "median_tflops": 24.24,
+      "runs_tflops": [
+        24.25,
+        24.24,
+        24.24,
+        24.22,
+        24.22
+      ],
+      "after": {
+        "clocks.sm": "1560",
+        "power.draw": "354.98",
+        "temperature.gpu": "41.28",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "8192/tf32": {
+      "median_tflops": 61.79,
+      "runs_tflops": [
+        61.79,
+        61.83,
+        61.82,
+        61.37,
+        61.5
+      ],
+      "after": {
+        "clocks.sm": "1605",
+        "power.draw": "359.42",
+        "temperature.gpu": "41.94",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "8192/fp16": {
+      "median_tflops": 110.57,
+      "runs_tflops": [
+        110.56,
+        110.33,
+        110.67,
+        110.57,
+        110.7
+      ],
+      "after": {
+        "clocks.sm": "1440",
+        "power.draw": "359.96",
+        "temperature.gpu": "41.62",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    },
+    "8192/bf16": {
+      "median_tflops": 113.89,
+      "runs_tflops": [
+        113.65,
+        113.89,
+        113.02,
+        114.19,
+        114.24
+      ],
+      "after": {
+        "clocks.sm": "1500",
+        "power.draw": "360.62",
+        "temperature.gpu": "42.09",
+        "clocks_throttle_reasons.active": "0x0000000000000004"
+      }
+    }
+  },
+  "gpu_after": {
+    "name": "NVIDIA GeForce RTX 3090",
+    "pci.bus_id": "00000000:2D:00.0",
+    "driver_version": "621.01",
+    "vbios_version": "94.02.59.00.5e",
+    "power.limit": "370.00",
+    "clocks.max.sm": "2115",
+    "clocks.max.mem": "9751",
+    "temperature.gpu": "38.03",
+    "utilization.gpu": "62"
+  }
+}
