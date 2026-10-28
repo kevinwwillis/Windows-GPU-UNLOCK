@@ -33,6 +33,7 @@ int main(int argc,char **argv) {
   Check(Run(31)!=EFI_SUCCESS && !Calls,"missing Reset rejected before any device detach");
   Check(RunFull(0)==EFI_SUCCESS && Calls==3 && Full.EdidDetached==0 && !Full.EdidAgent && EnableCalls==1 && ClaimCalls==1 && CloseCalls==1,"NV stop only after the console detach, then bounded IO/MEM-only restore; no EDID stage");
   Check(GuVerifyReleased(LastTable,TRUE)==EFI_SUCCESS,"zero physical GOP and protected graph verified");
+  Check(Full.ChildCount==FX_EXTRA_DISPLAY_CHILD+1,"every captured display child, and only those, was found");
   Check(Live.Count+4+Full.ChildCount==sizeof(FixtureEdges)/sizeof(FixtureEdges[0]),"only three console edges, NV PCI owner and exact display children removed");
   /* Scenarios 1, 2, 17, 28, 29 and 32 exercise the EDID stage, which does not exist here. */
   const int refuse[]={3,4,5,6,7,8,9,10,11,12,13,14,15,16,18,19,20};
@@ -44,11 +45,11 @@ int main(int argc,char **argv) {
     if(scenario==18)Check(!ClaimCalls,"new owner blocks exclusive auto-disconnect");
     if(scenario==19)Check(Calls==2,"late cold-read new child blocks the NVIDIA stop");
   }
-  const int blocked[]={23,24,25,26,27,30,33,34};
+  const int blocked[]={23,24,25,26,27,30,33,34,35,36,37,38};
   for(UINTN i=0;i<sizeof(blocked)/sizeof(blocked[0]);i++) {
     int scenario=blocked[i];
     Check(RunFull(scenario)!=EFI_SUCCESS && !EnableCalls && !ClaimCalls,"extra child/consumer/path/code/EDID driver/warning/partial NV stop blocks decode and unlock");
-    if(scenario==25 || scenario==26 || scenario==33 || scenario==34)Check(Calls==2,"late second child/code mutation or an EDID driver appearing blocks the NV stop");
+    if(scenario==25 || scenario==26 || scenario==33 || scenario==34 || scenario==36 || scenario==38)Check(Calls==2,"late second child/code mutation or an EDID driver appearing blocks the NV stop");
     if(scenario==30)Check(Calls==3 && !Full.Released,"NV partial child cleanup error cannot be promoted to release success");
   }
   Check(RunFull(0)==EFI_SUCCESS,"new release session");

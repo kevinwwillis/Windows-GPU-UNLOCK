@@ -48,7 +48,7 @@ refuse it at compile time. The probe needs `build-probe.ps1 -TargetBus` for a ca
 
 Admission and replay share a strict parser: incomplete/ambiguous handle, protocol,
 open and PCI snapshots cannot establish absence of an adapter or EDID owner. The
-no-EDID path admits one or two unique NVIDIA-owned display children. The generated
+no-EDID path admits one to four unique NVIDIA-owned display children (the headless release's runtime limit). The generated
 header explicitly records `GU_NO_EDID_DRIVER 0/1`; the report must contain the same
 boolean, and this header-bound value selects the required release replay. Regenerate
 older local profiles that lack this flag from their existing valid captures.

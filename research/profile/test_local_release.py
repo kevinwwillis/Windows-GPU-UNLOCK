@@ -42,7 +42,7 @@ def main():
     sources = [str(BOOT / 'test_headless_full.c'), str(BOOT / 'console-flow.c'),
                str(ROOT / 'internal-boot/unlock/checks.c'), str(ROOT / 'internal-boot/unlock/sha256.c')]
     summaries, child_checks = [], []
-    for bus, children, command, memory in itertools.product((1, 0x2b), (1, 2), (2, 3), (0x6000, 0x5ff4)):
+    for bus, children, command, memory in itertools.product((1, 0x2b), (1, 2, 3, 4), (2, 3), (0x6000, 0x5ff4)):
         name = f'bus{bus:x}-children{children}-cmd{command}-memory{memory:x}'
         case = out / name
         case.mkdir()

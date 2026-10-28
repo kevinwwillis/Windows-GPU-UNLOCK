@@ -140,6 +140,8 @@ int main(int argc,char **argv) {
         CHECK(result==EFI_SUCCESS && Gu.quiesced && !halted && !Gu.allocations && !fake.pool_live);
         CHECK(fake.gsp_starts==1 && fake.sec2_starts==1 && fake.flrs==1 && fake.radix_bytes==0x5053000);
          CHECK(registers[SS0/4]==0x88888888 && !(config[4]&4));
+         /* The release cleared memory decode only: the restore re-enables exactly that. */
+         if(modes[i]==APP_HANDOFF_CONFIG)CHECK(attribute_enables==1 && enabled_attributes==EFI_PCI_IO_ATTRIBUTE_MEMORY);
 #ifdef GU_ENTRY_LATCHED_SS1_PRESERVE
          CHECK(registers[SS1/4]==ss1 && strstr(report_text,"SS1policy=preserve"));
 #else

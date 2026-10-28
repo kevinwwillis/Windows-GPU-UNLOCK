@@ -33,8 +33,9 @@ def configuration(command=3):
 def synthetic_capture(*, bus=0x2b, igpu=False, no_edid=True, children=2, command=3, memory=0x6000, child_adr=0x20):
     cfg = configuration(command)
     handles = {i: {} for i in (1, 2, 3, 4, 5, 6, 8, 10, 11)}
-    if children == 2:
-        handles[7] = {}
+    extra = [7, 12, 13, 14][:children - 1]
+    for h in extra:
+        handles[h] = {}
     if not no_edid:
         handles[9] = {}
     def protocol(h, p, opens=(), detail=''):
@@ -50,7 +51,7 @@ def synthetic_capture(*, bus=0x2b, igpu=False, no_edid=True, children=2, command
     protocol(1, mp.PCI_IO, [(3, 1, 16, 1)],
              f'pci location-status=0x0 segment=0x0 bus=0x{bus:x} device=0x0 function=0x0\n'
              'pci config-status=0x0000000000000000\npci config-dwords=' + ' '.join(f'{v:08x}' for v in cfg[:16]) + '\n')
-    child_edges = [(3, 2, 8, 1)] + ([(3, 7, 8, 1)] if children == 2 else [])
+    child_edges = [(3, 2, 8, 1)] + [(3, h, 8, 1) for h in extra]
     protocol(1, mp.PATH, child_edges, path(PCI_PATH + END))
     protocol(2, mp.PATH, detail=path(RTX_PATH))
     protocol(2, mp.GOP, [(5, 2, 16, 1)],
@@ -58,10 +59,10 @@ def synthetic_capture(*, bus=0x2b, igpu=False, no_edid=True, children=2, command
              'gop width=0x780 height=0x438 stride=0x780\n')
     protocol(2, mp.TEXT_OUT, [(4, 2, 16, 1), (4, 6, 8, 1)])
     protocol(2, mp.EDID_DISCOVERED, [(3, 2, 2, 1)] if no_edid else [(9, 2, 16, 1)])
-    if children == 2:
-        second = bytearray(RTX_PATH); second[28] = child_adr
-        protocol(7, mp.PATH, detail=path(second))
-        protocol(7, mp.EDID_DISCOVERED, [] if no_edid else [(9, 7, 16, 1)])
+    for k, h in enumerate(extra):
+        second = bytearray(RTX_PATH); second[28] = (child_adr + 0x40 * k) & 0xff
+        protocol(h, mp.PATH, detail=path(second))
+        protocol(h, mp.EDID_DISCOVERED, [] if no_edid else [(9, h, 16, 1)])
     for h, image in ((3, 3), (4, 10), (5, 11)):
         protocol(h, '18a031ab-b443-4d1a-a5c0-0c09261e9f71', detail=f'driver image=0x{image:x} binding=0x{h:x}\n')
     protocol(6, '387477c1-69c7-11d2-8e39-00a0c969723b')
@@ -129,7 +130,7 @@ class LocalTopologyTests(unittest.TestCase):
         for bus in (1, 0x2b):
             for igpu in (False, True):
                 for no_edid in (False, True):
-                    for children in (1, 2):
+                    for children in ((1, 2, 3, 4) if no_edid else (1, 2)):
                         for command in (2, 3):
                             for memory in (0x6000, 0x5ff4):
                                 with self.subTest(bus=bus, igpu=igpu, no_edid=no_edid, children=children, command=command, memory=memory):
@@ -198,6 +199,14 @@ class LocalTopologyTests(unittest.TestCase):
             with self.subTest(bad=bad), self.assertRaises(mp.Refused):
                 analyze(damaged)
 
+    def test_no_edid_child_limit(self):
+        release = (HERE.parents[1] / 'internal-boot/boot/full-release.c').read_text(encoding='utf-8')
+        self.assertEqual(int(re.search(r'^#define GU_HEADLESS_MAX_DISPLAY_CHILDREN (\d+)$', release, re.M)[1]),
+                         mp.NO_EDID_MAX_DISPLAY_CHILDREN)
+        analyze(synthetic_capture(children=mp.NO_EDID_MAX_DISPLAY_CHILDREN))
+        with self.assertRaisesRegex(mp.Refused, 'one to four unique'):
+            analyze(synthetic_capture(children=5))
+
     def test_no_edid_children_have_complete_distinct_paths(self):
         with self.assertRaisesRegex(mp.Refused, 'unique complete paths'):
             analyze(synthetic_capture(child_adr=RTX_PATH[28]))
@@ -215,7 +224,7 @@ class LocalTopologyTests(unittest.TestCase):
         script = HERE.parents[1] / 'internal-boot/boot/make-console-fixture.py'
         for igpu in (False, True):
             for no_edid in (False, True):
-                for children in (1, 2):
+                for children in ((1, 2, 3, 4) if no_edid else (1, 2)):
                     with self.subTest(igpu=igpu, no_edid=no_edid, children=children), tempfile.TemporaryDirectory() as folder:
                         capture, output = Path(folder) / 'DIAG.TXT', Path(folder) / 'fixture.h'
                         capture.write_text(synthetic_capture(igpu=igpu, no_edid=no_edid, children=children, child_adr=0xa0), encoding='ascii')
@@ -229,8 +238,16 @@ class LocalTopologyTests(unittest.TestCase):
                         fixture = output.read_text()
                         self.assertIn(f'#define FX_NO_EDID_DRIVER {int(no_edid)}', fixture)
                         self.assertIn(f'#define FX_EXTRA_DISPLAY_CHILD {children - 1}', fixture)
-                        if children == 2:
+                        if children >= 2:
                             self.assertIn('#define FX_EDID_CHILD_PATH_BYTES', fixture)
+                        self.assertEqual('#define FX_EXTRA_CHILD_HANDLES' in fixture, children >= 3)
+                        if children >= 3:
+                            handles = re.search(r'^#define FX_EXTRA_CHILD_HANDLES (.+)$', fixture, re.M)[1].split(',')
+                            paths = re.findall(r'\{[0-9,]+\}', re.search(r'^#define FX_EXTRA_CHILD_PATHS (.+)$', fixture, re.M)[1])
+                            self.assertEqual(len(handles), children - 1)
+                            self.assertEqual(len(set(handles)), children - 1)
+                            self.assertEqual(len(paths), children - 1)
+                            self.assertEqual(len(set(paths)), children - 1)
 
     def test_fixture_flags_cannot_invent_absence(self):
         script = HERE.parents[1] / 'internal-boot/boot/make-console-fixture.py'

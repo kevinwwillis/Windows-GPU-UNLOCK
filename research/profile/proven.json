@@ -31,6 +31,11 @@
       "version": "60009",
       "text_sha256": "d045cee2113e461c7c678ec21542b1d0f18356765c0fc6a0bf2dcf824088e011",
       "evidence": "evidence/b550m-3090-usb"
+    },
+    {
+      "version": "6000a",
+      "text_sha256": "8924ba488419e5d82b524d10e8dd63bfe886f077026fae1a9cc03e25b920b276",
+      "evidence": "local only: owner accepted first run on MSI X570 / Gigabyte RTX 3090, 2026-10-27; first hardware release 2026-10-27, see research/msi-x570-3090"
     }
   ],
   "min_captures": 2

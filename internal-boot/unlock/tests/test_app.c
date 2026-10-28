@@ -380,6 +380,9 @@ static void app_setup(enum app_case mode) {
   setup(mode==APP_BME || mode==APP_HANDOFF_BME?BME_READBACK_FAIL:mode==APP_DIRTY?FWSEC_TIMEOUT:mode==APP_UNMAP?UNMAP_FAIL:mode==APP_SELECTOR?SELECTOR_LOST:
     mode==APP_FWSEC_NO_WPR?PIO_UNAVAILABLE_NO_WPR:mode==APP_FWSEC_PIO_UNAVAILABLE?PIO_UNAVAILABLE:SUCCESS);
   app_mode=mode;memcpy(config,captured_config,sizeof(config));
+  /* The PciIo record matches the captured command register (the generator's CapturePermit). */
+  fake.pci_attributes=(config[4]&1?EFI_PCI_IO_ATTRIBUTE_IO:0)|
+    (config[4]&2?EFI_PCI_IO_ATTRIBUTE_MEMORY:0)|(config[4]&4?EFI_PCI_IO_ATTRIBUTE_BUS_MASTER:0);
   memset(&st,0,sizeof(st));memset(&rt,0,sizeof(rt));memset(files,0,sizeof(files));memset(&loaded,0,sizeof(loaded));
   exclusive_calls=close_protocol_calls=key_calls=watchdog_calls=report_bytes=file_closes=0;
   query_calls=0;query_allocation=NULL;

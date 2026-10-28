@@ -36,6 +36,8 @@ import uuid
 from pathlib import Path
 
 GENERATOR_VERSION = 1
+# Same value as GU_HEADLESS_MAX_DISPLAY_CHILDREN in internal-boot/boot/full-release.c.
+NO_EDID_MAX_DISPLAY_CHILDREN = 4
 REPO = Path(__file__).resolve().parents[2]
 _graph_spec = importlib.util.spec_from_file_location('profile_capture_graph', Path(__file__).with_name('capture_graph.py'))
 _graph = importlib.util.module_from_spec(_graph_spec)
@@ -427,9 +429,10 @@ def analyze(diag, image_dir, envelope):
         nv_agent = sole_driver(blocks, rtx_pci, PCI_IO)
         child_edges = [(a, c, n) for p, a, c, attrs, n in blocks[rtx_pci]['edges'] if p == PATH and attrs == BY_CHILD_CONTROLLER]
         children = [c for a, c, n in child_edges]
-        if not 1 <= len(children) <= 2 or len(set(children)) != len(children) or \
+        # full-release.c accepts 1..GU_HEADLESS_MAX_DISPLAY_CHILDREN on this path at runtime.
+        if not 1 <= len(children) <= NO_EDID_MAX_DISPLAY_CHILDREN or len(set(children)) != len(children) or \
                 any(a != nv_agent or n != 1 for a, c, n in child_edges):
-            fail('no-EDID topology requires one or two unique NVIDIA-owned display children')
+            fail('no-EDID topology requires one to four unique NVIDIA-owned display children')
         if rtx not in children or any(c not in blocks or EDID_DISCOVERED not in blocks[c]['protocols'] for c in children):
             fail('without an EDID driver every RTX display child must carry the EdidDiscovered interface')
         child_paths = [path_of(blocks[c]['raw']) for c in children]

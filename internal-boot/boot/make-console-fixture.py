@@ -68,9 +68,12 @@ roles = {
 if single:
     child_records = [e for e in edges if e[0] == roles['RtxPci'] and str(e[3]) == '09576e91-6d3f-11d2-8e39-00a0c969723b' and e[4] == 8 and e[2] != roles['Rtx']]
     # The B650M capture had a second EDID-only RTX child; a one-monitor
-    # capture has none. More than one is still unreviewed.
-    if len(child_records) > 1 or ('--no-edid-child' not in sys.argv[2:] and len(child_records) != 1):
-        raise ValueError('Expected one additional RTX EDID-only child')
+    # capture has none. Without an EDID driver the headless release takes up to
+    # three more (four children); with one, more than one is still unreviewed.
+    extra_limit = 3 if no_edid_driver else 1
+    if len(child_records) > extra_limit or ('--no-edid-child' not in sys.argv[2:] and len(child_records) != 1):
+        raise ValueError('Expected at most three additional RTX display children' if no_edid_driver else
+                         'Expected one additional RTX EDID-only child')
     if child_records:
         roles['EdidChild'] = child_records[0][2]
     else:
@@ -94,7 +97,7 @@ for role, value in zip(['Console', 'Error', 'Input'], console.groups()):
     roles[role] = indices[hex(int(value, 16))]
 lines = [f'/* Local diagnostic sha256 {hashlib.sha256(raw).hexdigest()} */', f'#define FX_HANDLES {len(blocks)}',
          f'#define FX_NO_EDID_DRIVER {1 if no_edid_driver else 0}',
-         f'#define FX_EXTRA_DISPLAY_CHILD {1 if roles.get("EdidChild") else 0}']
+         f'#define FX_EXTRA_DISPLAY_CHILD {len(child_records) if single else 0}']
 if roles.get('EdidChild'):
     child_block = blocks[next(h for h, index in indices.items() if index == roles['EdidChild'])]
     path_rows = re.findall(r'^path-node raw=([0-9a-f]+)$', child_block, re.M)
@@ -102,6 +105,16 @@ if roles.get('EdidChild'):
     if len(child_path) != 36:
         raise ValueError('Additional display child requires its recorded 36-byte path')
     lines.append('#define FX_EDID_CHILD_PATH_BYTES ' + ','.join(str(byte) for byte in child_path))
+if single and len(child_records) > 1:
+    paths = []
+    for record in child_records:
+        rows = re.findall(r'^path-node raw=([0-9a-f]+)$', blocks[next(h for h, index in indices.items() if index == record[2])], re.M)
+        path = b''.join(bytes.fromhex(row) for row in rows)
+        if len(path) != 36:
+            raise ValueError('Additional display child requires its recorded 36-byte path')
+        paths.append('{' + ','.join(str(byte) for byte in path) + '}')
+    lines.append('#define FX_EXTRA_CHILD_HANDLES ' + ','.join(f'(EFI_HANDLE){record[2]}' for record in child_records))
+    lines.append('#define FX_EXTRA_CHILD_PATHS ' + ','.join(paths))
 for role, value in roles.items():
     lines.append(f'#define FX_{role} ((EFI_HANDLE){value})')
 lines.append('static const EDGE FixtureEdges[]={')

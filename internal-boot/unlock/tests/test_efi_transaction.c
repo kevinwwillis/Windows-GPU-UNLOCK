@@ -425,7 +425,13 @@ static VOID setup(enum scenario mode) {
   memcpy((UINT8 *)registers+0x300000,prom,sizeof(prom));
   GuInit(&bs,&pci);Gu.bar_base=0x84000000;Gu.bar_size=sizeof(registers);
 #ifdef GU_EXPERIMENTAL_3090
-  if(core_use_capture)memcpy(config,core_captured_config,sizeof(config));
+  if(core_use_capture) {
+    memcpy(config,core_captured_config,sizeof(config));
+    /* The PciIo record matches the captured command register; the generator refuses a capture
+     * where they disagree (CapturePermit). */
+    fake.pci_attributes=(config[4]&1?EFI_PCI_IO_ATTRIBUTE_IO:0)|
+      (config[4]&2?EFI_PCI_IO_ATTRIBUTE_MEMORY:0)|(config[4]&4?EFI_PCI_IO_ATTRIBUTE_BUS_MASTER:0);
+  }
   Gu.bar_base=GU_BAR0_BASE;
 #endif
   Gu.pcie_cap=0x78;Gu.pcie_version=2;Gu.pm_cap=0x60;Gu.msi_cap=0x68;Gu.msix_cap=0;
@@ -571,6 +577,22 @@ int main(int argc,char **argv) {
 #ifdef GU_ENTRY_LATCHED
   }
 #endif
+  /* GuEnableMaster refuses a PciIo record that disagrees with the command register's decode
+   * bits, before any write; the matching record is accepted (plain build only: the
+   * entry-latched build also needs latched selectors, which setup() does not provide). */
+  for(int k=0;k<4;k++) {
+    setup(SUCCESS);
+    UINT64 match=(config[4]&1?EFI_PCI_IO_ATTRIBUTE_IO:0)|(config[4]&2?EFI_PCI_IO_ATTRIBUTE_MEMORY:0);
+    const UINT64 records[]={match,match^EFI_PCI_IO_ATTRIBUTE_IO,match^EFI_PCI_IO_ATTRIBUTE_MEMORY,0};
+    fake.pci_attributes=records[k];
+    EFI_STATUS s=GuEnableMaster();
+    if(k) CHECK(EFI_ERROR(s) && !fake.master_enables && !fake.pci_writes && !(config[4]&4));
+#ifndef GU_ENTRY_LATCHED
+    else CHECK(!EFI_ERROR(s) && fake.master_enables==1 && (config[4]&4));
+#endif
+    dispose_host_fixture();
+  }
+  puts("PASS bus-master enable refuses a PciIo record that disagrees with the command register");
   for(UINTN i=0;i<5;i++)free((VOID *)GuAssets[i].firmware.data);
   printf("%u real core + compat + UEFI port scenarios passed; all PCI/MMIO/DMA/firmware execution simulated.\n",
 #ifdef GU_ENTRY_LATCHED
