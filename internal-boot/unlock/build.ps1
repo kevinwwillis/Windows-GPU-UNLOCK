@@ -8,6 +8,7 @@ param(
  [switch]$AutomaticBoot,
  [switch]$HeadlessResearch,
  [switch]$UsbMedia,
+ [switch]$ExperimentalLocalInternal,
  [ValidateSet('original03100062','observed03000062','entryLatchedSs1Preserve','entryLatchedSs1Full')][string]$StockProfile,
  [ValidateSet('b650m-3090fe','b660m-3070ti','x870-3090ti','b660plus-3060','h610m-3060','local')][string]$HardwareProfile='b650m-3090fe'
 )
@@ -37,7 +38,8 @@ try {
  $defines=@()
  if($HeadlessResearch -and (!$AutomaticBoot -or !$InternalBoot -or !$ExperimentalUnlock -or $StockProfile -ne 'entryLatchedSs1Full')){throw 'Headless research requires automatic internal exact full profile'}
  if($hw.HeadlessOnly -and $ExperimentalUnlock -and !$HeadlessResearch){throw ('Profile '+$HardwareProfile+' only ships a headless write path; non-headless builds are diagnostic-only')}
- if($hw.UsbOnly -and $ExperimentalUnlock -and !$UsbMedia){throw ('Profile '+$HardwareProfile+' only ships the headless USB write path')}
+ if($ExperimentalLocalInternal -and ($HardwareProfile -ne 'local' -or !$ExperimentalUnlock -or !$InternalBoot -or !$AutomaticBoot -or !$HeadlessResearch -or $UsbMedia)){throw '-ExperimentalLocalInternal requires a tested local headless internal build without USB media'}
+ if($hw.UsbOnly -and $ExperimentalUnlock -and !$UsbMedia -and !$ExperimentalLocalInternal){throw ('Profile '+$HardwareProfile+' only ships the headless USB write path')}
  if($HardwareProfile -eq 'local' -and $ExperimentalUnlock){$evidence=Assert-LocalProfileEvidence $repo}
  if($AutomaticBoot -and (!$InternalBoot -or !$ExperimentalUnlock -or $StockProfile -ne 'entryLatchedSs1Full')){throw 'Automatic boot requires internal full experimental profile'}
  if($InternalBoot) {

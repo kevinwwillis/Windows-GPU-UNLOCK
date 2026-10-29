@@ -172,7 +172,11 @@ static void Setup(void) {
   UINT8 *p = DevPath; UINT8 acpi[12] = {2, 1, 12, 0, 0xd0, 0x41, 3, 0x0a, 0, 0, 0, 0}; memcpy(p, acpi, 12); p += 12;
   UINT8 pci[6] = {1, 1, 6, 0, 1, 8}; memcpy(p, pci, 6); p += 6;
   UINT8 usb[6] = {3, 5, 6, 0, 2, 0}; memcpy(p, usb, 6); p += 6;
-  UINT8 hd[42] = {4, 1, 42, 0}; hd[4] = 1; hd[24] = 1; hd[41] = 1; memcpy(p, hd, 42); p += 42;
+    UINT8 hd[42] = {4, 1, 42, 0}; hd[4] = 1; hd[24] = 1; hd[41] = 1;
+#ifdef PRESTEP_INTERNAL
+    hd[16] = 1; hd[40] = 2; hd[41] = 2; memcpy(hd + 24, &GuInternalPartition, 16);
+#endif
+    memcpy(p, hd, 42); p += 42;
   UINT8 end[4] = {0x7f, 0xff, 4, 0}; memcpy(p, end, 4); p += 4; DevPathLen = (UINTN)(p - DevPath);
   LogFile = NULL; Root = NULL; LogOk = FALSE;
   for (int i = 0; i < MAXDEV; i++) PciHandles[i] = (EFI_HANDLE)(UINTN)(0x5000 + i * 16);
@@ -346,6 +350,12 @@ int main(void) {
   }
   Setup(); AddStandard(0x0002, 0x300, 0); FilePathNode(SelfPath, "\\EFI\\BOOT\\NEXTX.EFI"); s = Run();
   CHECK(s == EFI_SUCCESS && StartCalls == 1, "other name ending differently still runs");
+#ifdef PRESTEP_INTERNAL
+  Setup(); AddStandard(0x0002, 0x300, 0); DevPath[24 + 24] ^= 1; s = Run();
+  CHECK(s == EFI_NOT_STARTED && Gpu->attr_calls == 0 && LoadCalls == 0 && NFiles == 0 && WritesDone == 0, "wrong partition refuses before logging and PCI writes");
+  Setup(); AddStandard(0x0002, 0x300, 0); DevPath[24 + 40] = 1; s = Run();
+  CHECK(s == EFI_NOT_STARTED && Gpu->attr_calls == 0 && LoadCalls == 0 && NFiles == 0 && WritesDone == 0, "non-GPT path refuses before logging and PCI writes");
+#endif
   printf("gate=%d: %d checks, %d failures\n", PRESTEP_GATE, checks, failures);
   return failures != 0;
 }
