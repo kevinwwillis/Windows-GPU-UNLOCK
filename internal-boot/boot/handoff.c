@@ -39,6 +39,9 @@
 #if defined(GU_USB_PROBE) && !defined(GU_DIAGNOSTIC_ONLY)
 #error GU_USB_PROBE is the read-only diagnostic probe only
 #endif
+#if defined(GU_INTERNAL_LOCAL) && (!defined(GU_FULL_UNLOCK) || !defined(GU_PROFILE_LOCAL) || defined(GU_USB_MEDIA))
+#error Internal local fallback requires a local full-unlock internal build
+#endif
 
 static EFI_GUID LoadedGuid=EFI_LOADED_IMAGE_PROTOCOL_GUID,FsGuid=EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
 static EFI_GUID PathGuid=EFI_DEVICE_PATH_PROTOCOL_GUID;
@@ -429,10 +432,10 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE Image,EFI_SYSTEM_TABLE *St) {
 #ifdef GU_FULL_UNLOCK
   ScreenStatus("full-flow-returned",s);
 #endif
-#if defined(GU_FULL_UNLOCK) && defined(GU_USB_MEDIA)
-  /* Default-boot USB stick: if no driver was released, the GPU and firmware are
-   * untouched, so hand back to the firmware BootOrder (next: Windows Boot Manager). */
-  if(!ReleaseStarted) {
+#if defined(GU_FULL_UNLOCK) && (defined(GU_USB_MEDIA) || defined(GU_INTERNAL_LOCAL))
+  /* Before any display-release attempt, return to the firmware boot order.
+   * A preceding PCI decode-sync step may already have changed PCI attributes. */
+  if(GuMayReturnToFirmware(ReleaseStarted)) {
     if(Log){(void)Log->Close(Log);Log=NULL;}
     if(Root){(void)Root->Close(Root);Root=NULL;}
     Say(L"Nothing was changed. Returning to the firmware boot order.\r\n");

@@ -18,6 +18,12 @@
 #include <Protocol/SimpleFileSystem.h>
 #include <Guid/FileInfo.h>
 #include "decode-sync.h"
+#ifdef PRESTEP_INTERNAL
+#include "../../../internal-boot/boot/media.h"
+#if !PRESTEP_GATE
+#error Internal prestep must refuse unverified hardware instead of continuing
+#endif
+#endif
 
 #ifndef PRESTEP_GATE
 #error "build with -DPRESTEP_GATE=0 (probe chain) or 1 (unlock chain)"
@@ -33,6 +39,10 @@ _Static_assert(EFI_PCI_IO_ATTRIBUTE_IO == DS_ATTR_IO && EFI_PCI_IO_ATTRIBUTE_MEM
                EFI_PCI_IO_ATTRIBUTE_BUS_MASTER == DS_ATTR_BUS_MASTER, "attribute bits");
 
 static EFI_GUID PciGuid = EFI_PCI_IO_PROTOCOL_GUID;
+#ifdef PRESTEP_INTERNAL
+/* Keep a loader relocation in the PE image and verify it before using services. */
+static EFI_GUID *volatile RelocationAnchor = &PciGuid;
+#endif
 static EFI_GUID LoadedGuid = EFI_LOADED_IMAGE_PROTOCOL_GUID;
 static EFI_GUID PathGuid = EFI_DEVICE_PATH_PROTOCOL_GUID;
 static EFI_GUID FsGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
@@ -202,6 +212,9 @@ static EFI_STATUS StartNext(EFI_HANDLE Image, EFI_HANDLE Device, EFI_HANDLE *Chi
 }
 
 EFI_STATUS EFIAPI efi_main(EFI_HANDLE Image, EFI_SYSTEM_TABLE *Table) {
+#ifdef PRESTEP_INTERNAL
+  if (RelocationAnchor != &PciGuid) return EFI_NOT_STARTED;
+#endif
   St = Table; Bs = Table->BootServices;
   EFI_LOADED_IMAGE_PROTOCOL *self = NULL;
   if (Bs->HandleProtocol(Image, &LoadedGuid, (VOID **)&self) != EFI_SUCCESS || !self) return EFI_NOT_STARTED;
@@ -209,6 +222,12 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE Image, EFI_SYSTEM_TABLE *Table) {
     Screen("prestep: started as NEXT.EFI (mis-staged stick); doing nothing");
     return EFI_NOT_STARTED;
   }
+#ifdef PRESTEP_INTERNAL
+  /* Check our exact dedicated ESP before logging or touching PCI attributes. */
+  EFI_DEVICE_PATH_PROTOCOL *devicePath = NULL;
+  if (Bs->HandleProtocol(self->DeviceHandle, &PathGuid, (VOID **)&devicePath) != EFI_SUCCESS ||
+      !GuPathIsPartition(devicePath, &GuInternalPartition)) return EFI_NOT_STARTED;
+#endif
   OpenLog(self->DeviceHandle);
   TXT h; h.n = 0; Put(&h, "prestep TASK-22.6 decode-sync v3 gate="); Hex(&h, PRESTEP_GATE, 1);
   EFI_TIME now; if (St->RuntimeServices && St->RuntimeServices->GetTime(&now, NULL) == EFI_SUCCESS) {

@@ -38,6 +38,9 @@ function Get-LocalRequiredFiles {
  @('internal-boot/efi_runtime.c','internal-boot/unlock/local-profile.ps1',
    'internal-boot/unlock/build.ps1','internal-boot/boot/handoff.c',
    'research/headless/build-usb.ps1','research/headless/stage-usb.ps1',
+   'research/headless/build-local-internal.ps1','research/headless/stage-local-internal.ps1','research/headless/test-local-internal-guard.ps1',
+   'research/msi-x570-3090/prestep/prestep.c','research/msi-x570-3090/prestep/decode-sync.c',
+   'research/msi-x570-3090/prestep/test-internal-prestep.sh',
    'research/profile/make-profile.py','research/profile/capture_graph.py','research/profile/test-profile.ps1',
    'research/profile/host.ps1','research/profile/proven.json')
 }
@@ -47,7 +50,7 @@ function Get-LocalTreeInputs([string]$Repo) {
   if(!(Test-Path -LiteralPath (Join-Path $Repo $required) -PathType Leaf)){throw "Missing required input: $required"}
  }
  $files=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
- $roots=@('internal-boot/unlock','internal-boot/boot','research/profile','research/headless','deps/edk2/MdePkg/Include')
+ $roots=@('internal-boot/unlock','internal-boot/boot','research/profile','research/headless','research/msi-x570-3090/prestep','deps/edk2/MdePkg/Include')
  foreach($entry in $roots) {
   $base=Join-Path $Repo $entry
   if(!(Test-Path -LiteralPath $base -PathType Container)){throw "Missing input root: $entry"}
@@ -58,7 +61,7 @@ function Get-LocalTreeInputs([string]$Repo) {
     if($f.PSIsContainer -and ($f.Name -eq 'build' -or $rel -eq 'research/profile/local')){continue}
     if($f.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Untracked indirect input: $rel"}
     if($f.PSIsContainer){$pending.Push($f.FullName);continue}
-    if($f.Extension -notmatch '^\.(c|h|py|json|ps1)$'){continue}
+    if($f.Extension -notmatch '^\.(c|h|py|json|ps1|sh)$'){continue}
     if($rel -in @('internal-boot/unlock/profile-local.h','internal-boot/boot/platform-config.h','internal-boot/boot/generated.h')){continue}
     $files[$rel]=Get-GuSha256 $f.FullName;$found++
    }

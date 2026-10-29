@@ -14,3 +14,5 @@ typedef struct {
   GU_PREPARE_LOG Record;
 } GU_FULL_FLOW_OPS;
 EFI_STATUS GuFullFlow(const GU_FULL_FLOW_OPS *Ops);
+/* Firmware fallback is permissible only before any display-release attempt. */
+static inline BOOLEAN GuMayReturnToFirmware(BOOLEAN ReleaseStarted) { return !ReleaseStarted; }
